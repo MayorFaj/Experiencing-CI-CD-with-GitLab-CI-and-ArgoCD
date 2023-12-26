@@ -1,0 +1,45 @@
+variables:
+  IMAGE_NAME: mayorfaj/pythonflask-app
+  IMAGE_TAG: "1.0.${CI_PIPELINE_IID}"
+
+stages:
+  - test
+  - build
+  - update_deployment
+
+run_tests:
+  stage: test
+  image: python:3.9-slim-bookworm
+  before_script: 
+    - apt-get update && apt-get install make
+  script:
+    - make test
+
+build_image:
+  stage: build
+  image: docker:25.0.0-beta.1-cli
+  services:
+    - docker:25.0.0-beta.1-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$DOCKER_PWD" | docker login -u "$DOCKER_USER" --password-stdin
+  script:
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+
+update_deployment:
+  stage: update_deployment
+  variables:
+    GIT_REPO_NAME: "cicd-python-app"
+    GIT_USER_NAME: "MayorFaj"
+  script:
+    - git config user.email "mayorfaj@gmail.com"
+    - git config user.name "Mayowa Fajobi"
+    - git remote set-url origin "https://$CI_JOB_TOKEN:$ACCESS_TOKEN@gitlab.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git"
+    - sed -i "s/replaceImageTag/${IMAGE_TAG}/g" deploy/python-flask-app-manifests/deployment.yml
+    - git add deploy/python-flask-app-manifests/deployment.yml
+    - git commit -m "Update deployment image to latest version"
+    - git push origin HEAD:feature
+
+

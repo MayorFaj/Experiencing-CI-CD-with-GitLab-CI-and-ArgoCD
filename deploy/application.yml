@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: python-application
+  namespace: argocd
+spec:
+  destination:
+    name: ''
+    namespace: default
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: deploy/python-flask-app-manifests
+    repoURL: 'https://gitlab.com/MayorFaj/cicd-python-app.git'
+    targetRevision: HEAD
+  sources: []
+  project: default
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
